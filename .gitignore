@@ -1,0 +1,15 @@
+/figs
+/figs2
+/output
+/qc
+/.ipynb_checkpoints
+/*.npy
+/*.txt
+/*.html
+/*.pkl
+/*.tar.gz
+/*.csv
+/*.xlsx
+/*.png
+/*.ipynb
+
