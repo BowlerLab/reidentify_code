@@ -61,7 +61,6 @@ def predict_genotype(model, prots):
         total_preds.append(plc)
     return np.stack(total_preds, axis=0)
 
-
 def eval_model(y_pred, y_true, class_orders):
     y_true = y_true.values
     # For each row of y_true
