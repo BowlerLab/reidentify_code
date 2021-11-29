@@ -3,25 +3,20 @@
 
 import pandas as pd
 import numpy as np
-np.seterr(divide="raise",under="warn",over="warn")
-
+from dataloader import load_data
 import argparse
 import pickle
 from matplotlib import pyplot as plt
-from pandas import DataFrame
 from sklearn.naive_bayes import GaussianNB
 from collections import Counter
 import seaborn as sns
-from matplotlib.cm import tab10
 from matplotlib.ticker import AutoMinorLocator
 from paths import *
-
-#PAIR_LIST = "output/use_pqtls_p1_only.csv"
-#REFERENCE_SNPS = "output/reference_snps_p1.csv"
+np.seterr(divide="raise", under="warn", over="warn")
 
 
-def get_train_test_2(pqtls, train_data, train_labels, test_data, test_labels, log_transform=True,
-                     align_to_reference=False, dump_charts=False, train_other_snps = None, test_other_snps = None):
+def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log_transform=True,
+                    align_to_reference=False, dump_charts=False, train_other_snps=None, test_other_snps=None):
     snp_list = [p[0] for p in pqtls]
     prot_list = [p[1] for p in pqtls]
     ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
@@ -37,11 +32,6 @@ def get_train_test_2(pqtls, train_data, train_labels, test_data, test_labels, lo
     if log_transform:
         xtrain_tmp = np.log(1 + xtrain_tmp)
         xtest_tmp = np.log(1 + xtest_tmp)
-
-        # REMOVE THIS
-        #scaler = StandardScaler()
-        #xtrain_tmp = scaler.fit_transform(xtrain_tmp)
-        #xtest_tmp = scaler.fit_transform(xtest_tmp)
 
     if dump_charts:
         for j, (snp, prot) in enumerate(pqtls):
@@ -105,10 +95,10 @@ def get_train_test_2(pqtls, train_data, train_labels, test_data, test_labels, lo
     test_sids = test_data.loc[:, prot_list].index.values
 
     if type(train_other_snps) == pd.DataFrame or type(test_other_snps) == pd.DataFrame:
-        train_other_snps_tmp = train_other_snps.loc[:,snp_list]
-        test_other_snps_tmp = test_other_snps.loc[:,snp_list]
+        train_other_snps_tmp = train_other_snps.loc[:, snp_list]
+        test_other_snps_tmp = test_other_snps.loc[:, snp_list]
 
-        tmp_concat = np.concatenate([ytrain_tmp,ytest_tmp,train_other_snps_tmp,test_other_snps_tmp]).T
+        tmp_concat = np.concatenate([ytrain_tmp, ytest_tmp, train_other_snps_tmp, test_other_snps_tmp]).T
     else:
         tmp_concat = np.concatenate([ytrain_tmp, ytest_tmp]).T
 
@@ -118,7 +108,7 @@ def get_train_test_2(pqtls, train_data, train_labels, test_data, test_labels, lo
         ytest_tmp), test_sids, all_classes
 
 
-def train_model(train_proteins, train_snps, all_classes,skip_train=False):
+def train_model(train_proteins, train_snps, all_classes, skip_train=False):
     assert (len(train_proteins) == len(train_snps))
     models = []
     class_orders = []
@@ -152,13 +142,13 @@ def train_model(train_proteins, train_snps, all_classes,skip_train=False):
         #     plt.close()
 
         models.append(nb)
-        #assert np.all(nb.classes_ == all_classes[i])
+        # assert np.all(nb.classes_ == all_classes[i])
         class_orders.append({v: k for k, v in enumerate(all_classes[i])})
         class_priors.append(class_prior_i)
     return models, class_orders, class_priors
 
 
-def predict_model(models, test_proteins,log_odds=False):
+def predict_model(models, test_proteins, log_odds=False):
     assert (len(test_proteins) == len(models))
 
     total_preds = []
@@ -189,7 +179,7 @@ def eval_model(y_pred, y_true, class_orders, class_priors, num_proteins=100, mem
     use_prev_result = False
     # Check if there is a memoization result we can use.
     if memo_tag in tag_dict:
-        for key in sorted(tag_dict[memo_tag].keys(),reverse=True):
+        for key in sorted(tag_dict[memo_tag].keys(), reverse=True):
             if key <= num_proteins:
                 print("Memoized result available!")
                 start_i = key
@@ -203,7 +193,7 @@ def eval_model(y_pred, y_true, class_orders, class_priors, num_proteins=100, mem
         start_i = 0
         all_preds = np.zeros((y_pred.shape[1], y_true.shape[1]))
 
-    for i in np.arange(start_i,num_proteins):
+    for i in np.arange(start_i, num_proteins):
         print(i)
         # Get class orders
         class_order = class_orders[i]
@@ -218,22 +208,22 @@ def eval_model(y_pred, y_true, class_orders, class_priors, num_proteins=100, mem
             onehot[nan_idcs[i]] = np.nan
             # Get the probability that each subject has this genotype
             tmp_preds = np.matmul(y_pred[i], onehot.T)
-            tmp_preds = np.maximum(tmp_preds,np.finfo(np.float64).eps)
+            tmp_preds = np.maximum(tmp_preds, np.finfo(np.float64).eps)
             tmp_preds = np.log(np.minimum(5, tmp_preds / (1 - tmp_preds + np.finfo(np.float64).eps)))
             tmp_preds[:, nan_idcs[i]] = 0
         else:
-            #onehot[nan_idcs[i]] = 1 / (3 * np.ones(3))
+            # onehot[nan_idcs[i]] = 1 / (3 * np.ones(3))
             onehot[nan_idcs[i]] = np.nan
             # Get the probability that each subject has this genotype
             tmp_preds = np.matmul(y_pred[i], onehot.T)
-            tmp_preds[:,nan_idcs[i]] = np.log(1/3)
+            tmp_preds[:, nan_idcs[i]] = np.log(1 / 3)
 
         all_preds += tmp_preds
-        #all_preds += tmp_preds
+        # all_preds += tmp_preds
         del tmp_preds
 
     tag_dict[memo_tag][num_proteins] = all_preds
-    #full_arr = np.stack(all_preds).transpose(1, 2, 0).sum(axis=-1)
+    # full_arr = np.stack(all_preds).transpose(1, 2, 0).sum(axis=-1)
 
     return all_preds
 
@@ -273,7 +263,7 @@ def softmax_group(df):
 
 
 def make_comparison_df(prob_matrix, sids, clinical, title=None, other_sids=None):
-    fig, ax = plt.subplots(ncols=1,figsize=(12,120))
+    fig, ax = plt.subplots(ncols=1, figsize=(12, 120))
     count = 0
     ax = [ax, count]
     if other_sids is None:
@@ -286,15 +276,16 @@ def make_comparison_df(prob_matrix, sids, clinical, title=None, other_sids=None)
     disp_df.index.name = "True Subject"
 
     top_match_df = pd.DataFrame(disp_df.values.argsort(axis=1)[:, ::-1], index=disp_df.index,
-                 columns=["Guess_%d" % i for i in range(disp_df.shape[1])]).applymap(lambda val: disp_df.columns[val])
+                                columns=["Guess_%d" % i for i in range(disp_df.shape[1])]).applymap(
+        lambda val: disp_df.columns[val])
 
-    top_match_df.to_csv("{}_actual_vs_predicted.csv".format(title.replace("_prob_dist","")))
+    top_match_df.to_csv("{}_actual_vs_predicted.csv".format(title.replace("_prob_dist", "")))
     return
 
     disp_df.reset_index(inplace=True)
     disp_df = disp_df.melt(id_vars=["True Subject"], value_name="log_prob", var_name="Predicted Subject").join(clinical,
                                                                                                                on="Predicted Subject")
-    #disp_df = disp_df.loc[disp_df["True Subject"].isin(["CU101800", "CU100195", "LA192182"])]
+    # disp_df = disp_df.loc[disp_df["True Subject"].isin(["CU101800", "CU100195", "LA192182"])]
     disp_df["match"] = disp_df["True Subject"] == disp_df["Predicted Subject"]
 
     disp_df = disp_df.groupby("True Subject").apply(softmax_group)
@@ -314,32 +305,34 @@ def make_comparison_df(prob_matrix, sids, clinical, title=None, other_sids=None)
 
     # Get actual vs predicted SIDs for the mismatches:
     pred_vs_actual = disp_df.groupby(level=0).apply(lambda df: {"Actual": df.index.get_level_values("True Subject")[0],
-                                                                "Predicted": df.loc[df.prob == df.prob.max(), "Predicted Subject"].values[0]})
+                                                                "Predicted": df.loc[
+                                                                    df.prob == df.prob.max(), "Predicted Subject"].values[
+                                                                    0]})
     pred_vs_actual = pd.DataFrame.from_records(pred_vs_actual)
-    pred_vs_actual.to_csv("{}_actual_vs_predicted.csv".format(title.replace("_prob_dist","")))
+    pred_vs_actual.to_csv("{}_actual_vs_predicted.csv".format(title.replace("_prob_dist", "")))
 
     nonmatch_df = disp_df.loc[~disp_df["match"]]
     match_df = disp_df.loc[disp_df["match"]]
     ax[0].clear()
-    #ax[0].scatter(np.log10(nonmatch_df["prob"]), nonmatch_df["y_coords"], color=tab10(0), s=2, label="Non-match")
-    #ax[0].scatter(np.log10(match_df["prob"]), match_df["y_coords"], color=tab10(1), s=5, label="Match")
-    #ax[0].set_xlim([-160, 1.1])
+    # ax[0].scatter(np.log10(nonmatch_df["prob"]), nonmatch_df["y_coords"], color=tab10(0), s=2, label="Non-match")
+    # ax[0].scatter(np.log10(match_df["prob"]), match_df["y_coords"], color=tab10(1), s=5, label="Match")
+    # ax[0].set_xlim([-160, 1.1])
     xticks = ax[0].get_xticks()
-    #ax[0].set_xticklabels(labels=['$10^{%d}$' % tick if tick != 0 else '$1$' for tick in xticks])
-    #ax[0].set_yticks(ticks=sids_range)
-    #ax[0].set_yticklabels(labels=["Subject %d" % (d + 1) for d in reversed(range(len(sids_order)))])
-    #ax[0].set_yticklabels(labels=sids_order,fontsize=8)
-    #ax[0].set_ylim([sids_range.min() - 0.5, sids_range.max() + 0.5])
-    #ax[0].set_xlabel("Probability of genotype given a subject's proteome profile")
-    #ax[0].legend(fancybox=False, edgecolor="black", loc="upper left", framealpha=1.0)
+    # ax[0].set_xticklabels(labels=['$10^{%d}$' % tick if tick != 0 else '$1$' for tick in xticks])
+    # ax[0].set_yticks(ticks=sids_range)
+    # ax[0].set_yticklabels(labels=["Subject %d" % (d + 1) for d in reversed(range(len(sids_order)))])
+    # ax[0].set_yticklabels(labels=sids_order,fontsize=8)
+    # ax[0].set_ylim([sids_range.min() - 0.5, sids_range.max() + 0.5])
+    # ax[0].set_xlabel("Probability of genotype given a subject's proteome profile")
+    # ax[0].legend(fancybox=False, edgecolor="black", loc="upper left", framealpha=1.0)
     plt.tight_layout()
     # PRINTS FIGURE 2
     plt.savefig("figs/{}.png".format(title))
 
 
 def train_test_accuracy(train_prob_matrices, train_sids, train_clinical, test_prob_matrices, test_sids, test_clinical,
-                        train_title, test_title, fname, count_ties=False, draw_probs=False, train_other_sids = None,
-                        test_other_sids = None):
+                        train_title, test_title, fname, count_ties=False, draw_probs=False, train_other_sids=None,
+                        test_other_sids=None):
     # Prints Figure
     if draw_probs:
         make_comparison_df(test_prob_matrices, test_sids, test_clinical, test_title + "_prob_dist",
@@ -348,15 +341,15 @@ def train_test_accuracy(train_prob_matrices, train_sids, train_clinical, test_pr
     train_prob_matrix = train_prob_matrices
     test_prob_matrix = test_prob_matrices
 
-    #two_pct_of_pool = int(np.ceil(0.02*train_prob_matrix.shape[1]))
-    #test_two_pct_of_pool = int(np.ceil(0.02*test_prob_matrix.shape[1]))
+    # two_pct_of_pool = int(np.ceil(0.02*train_prob_matrix.shape[1]))
+    # test_two_pct_of_pool = int(np.ceil(0.02*test_prob_matrix.shape[1]))
     one_pct_cutoff = np.floor(train_prob_matrix.shape[1] * 0.01).astype(np.int32)
 
     train_top_k = get_top_k_accuracy(-train_prob_matrix, k=one_pct_cutoff, count_ties=count_ties)
     test_top_k = get_top_k_accuracy(-test_prob_matrix, k=one_pct_cutoff, count_ties=count_ties)
 
-    np.save("train_%s_top_k%s.npy" % (train_title,adj_suffix), train_top_k)
-    np.save("test_%s_top_k%s.npy" % (test_title,adj_suffix), test_top_k)
+    np.save("train_%s_top_k%s.npy" % (train_title, adj_suffix), train_top_k)
+    np.save("test_%s_top_k%s.npy" % (test_title, adj_suffix), test_top_k)
     train_all_top_k = train_top_k.sum(axis=0) / train_prob_matrix.shape[0]
 
     one_pct_cutoff = np.floor(train_prob_matrix.shape[1] * 0.01).astype(np.int32)
@@ -405,10 +398,10 @@ def train_test_accuracy(train_prob_matrices, train_sids, train_clinical, test_pr
     print("Test ties: %s" % test_ties)
 
     # Train Data
-    #ax[0].set_title("Top-K accuracy for '%s' dataset (Train Set)" % train_title)
-    irange = np.concatenate([np.arange(0,one_pct_cutoff,4)])
-    prange = irange+1
-    #prange = np.arange(1, two_pct_of_pool+1,4)
+    # ax[0].set_title("Top-K accuracy for '%s' dataset (Train Set)" % train_title)
+    irange = np.concatenate([np.arange(0, one_pct_cutoff, 4)])
+    prange = irange + 1
+    # prange = np.arange(1, two_pct_of_pool+1,4)
     ax[0].plot(prange, train_all_top_k[irange], "o-",
                label="All Subjects (n={:d} of {:d} genotyped)".format(train_prob_matrix.shape[0],
                                                                       train_prob_matrix.shape[1]))
@@ -417,7 +410,7 @@ def train_test_accuracy(train_prob_matrices, train_sids, train_clinical, test_pr
     ax[0].plot(prange, prange / train_prob_matrix.shape[1], "o-", label="Random Guess", color="gray")
     ax[0].set_xlabel("K")
     ax[0].set_ylabel("Accuracy")
-    tick_range = np.concatenate([np.arange(1, one_pct_cutoff+1, 8)])
+    tick_range = np.concatenate([np.arange(1, one_pct_cutoff + 1, 8)])
     ax[0].set_xticks(tick_range)
     ax[0].set_yticks(np.linspace(0, 1.0, 11))
     ax[0].yaxis.set_minor_locator(AutoMinorLocator(n=2))
@@ -432,7 +425,7 @@ def train_test_accuracy(train_prob_matrices, train_sids, train_clinical, test_pr
     train_ax_pct.set_xlim(ax[0].get_xlim())
     train_ax_pct.set_xticklabels(train_norm_k, rotation=45, ha="right")
     # Test Data
-    #ax[1].set_title("Top-K accuracy for '%s' dataset (Test Set)" % test_title)
+    # ax[1].set_title("Top-K accuracy for '%s' dataset (Test Set)" % test_title)
     ax[1].plot(prange, test_all_top_k[irange], "o-",
                label="All Subjects (n={:d} of {:d} genotyped)".format(test_prob_matrix.shape[0],
                                                                       test_prob_matrix.shape[1]))
@@ -483,162 +476,6 @@ def prediction_matrix(train_prob_matrix, test_prob_matrix, train_title, test_tit
     plt.close()
 
 
-def load_proteins_snps_clinical(protein_path, snp_path, clinical_path, protein_sep="\t", snp_sep=",", clin_sep="\t",
-                                clin_age_col="age_baseline", clin_race_col="race", clin_gender_col="gender"):
-    protein_df = pd.read_csv(protein_path, sep=protein_sep, index_col=0)
-    snp_df = pd.read_csv(snp_path, sep=snp_sep, index_col=0, keep_default_na=False)
-    clinical_df = pd.read_csv(clinical_path, sep=clin_sep, index_col=0)
-    # Get intersection of SIDs
-    use_sids = set(protein_df.index).intersection(snp_df.columns)
-    # We can use the genotypes for SIDs which do not have protein measurements as extras when testing.
-    other_sids = set(snp_df.columns) - use_sids
-    protein_df = protein_df.loc[use_sids, :]
-    snp_df_reduced = snp_df.loc[:, use_sids].transpose()
-    snp_df_other = snp_df.loc[:, other_sids].transpose()
-    clinical_df = clinical_df.loc[use_sids, [clin_race_col, clin_gender_col, clin_age_col]]
-    clinical_df.columns = ["race", "gender", "age"]
-    return protein_df.sort_index(), snp_df_reduced.sort_index(), clinical_df.sort_index(), snp_df_other.sort_index()
-
-
-def load_copdgene_p1():
-    return load_proteins_snps_clinical(COPDGene_P1_PROTEINS, COPDGene_P1_SNPS, COPDGene_P1_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P1_AGE_COL,
-                                       clin_race_col=COPDGene_P1_RACE_COL, clin_gender_col=COPDGene_P1_GENDER_COL)
-
-def load_copdgene_p1_jhs():
-    return load_proteins_snps_clinical(COPDGene_P1_JHS_PROTEINS, COPDGene_P1_JHS_SNPS, COPDGene_P1_JHS_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P1_JHS_AGE_COL,
-                                       clin_race_col=COPDGene_P1_JHS_RACE_COL, clin_gender_col=COPDGene_P1_JHS_GENDER_COL)
-
-def load_copdgene_p1_jhs_only():
-    return load_proteins_snps_clinical(COPDGene_P1_JHS_ONLY_PROTEINS, COPDGene_P1_JHS_ONLY_SNPS, COPDGene_P1_JHS_ONLY_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P1_JHS_ONLY_AGE_COL,
-                                       clin_race_col=COPDGene_P1_JHS_ONLY_RACE_COL, clin_gender_col=COPDGene_P1_JHS_ONLY_GENDER_COL)
-
-def load_copdgene_p2():
-    return load_proteins_snps_clinical(COPDGene_P2_PROTEINS, COPDGene_P2_SNPS, COPDGene_P2_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P2_AGE_COL,
-                                       clin_race_col=COPDGene_P2_RACE_COL, clin_gender_col=COPDGene_P2_GENDER_COL)
-
-def load_copdgene_p2_jhs():
-    return load_proteins_snps_clinical(COPDGene_P2_JHS_PROTEINS, COPDGene_P2_JHS_SNPS, COPDGene_P2_JHS_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P2_JHS_AGE_COL,
-                                       clin_race_col=COPDGene_P2_JHS_RACE_COL, clin_gender_col=COPDGene_P2_JHS_GENDER_COL)
-
-def load_copdgene_p1_p2():
-    p1_protein, p1_snp, p1_clin, p1_other_snp = load_copdgene_p1()
-    p2_protein, p2_snp, p2_clin, p2_other_snp = load_copdgene_p2()
-
-    comb_protein = pd.concat([p1_protein,p2_protein],axis=0)
-    comb_snp = pd.concat([p1_snp,p2_snp],axis=0)
-    comb_clin = pd.concat([p1_clin,p2_clin],axis=0)
-    # Get only SNPs which appear in both p1 and p2 'other' SNPs (i.e. don't appear in either of the original sets.
-    other_snp_index = set(p1_other_snp.index).intersection(p2_other_snp.index)
-    comb_other_snp = p1_other_snp.loc[other_snp_index]
-
-    assert(len(other_snp_index.intersection(comb_snp.index)) == 0)
-    return comb_protein,comb_snp,comb_clin,comb_other_snp
-
-def load_spiromics():
-    return load_proteins_snps_clinical(SPIROMICS_PROTEINS, SPIROMICS_SNPS, SPIROMICS_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_sep=",", clin_age_col=SPIROMICS_AGE_COL,
-                                       clin_race_col=SPIROMICS_RACE_COL, clin_gender_col=SPIROMICS_GENDER_COL)
-
-def load_spiromics_jhs():
-    return load_proteins_snps_clinical(SPIROMICS_JHS_PROTEINS, SPIROMICS_JHS_SNPS, SPIROMICS_JHS_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_sep=",", clin_age_col=SPIROMICS_JHS_AGE_COL,
-                                       clin_race_col=SPIROMICS_JHS_RACE_COL, clin_gender_col=SPIROMICS_JHS_GENDER_COL)
-
-def load_spiromics_jhs_only():
-    return load_proteins_snps_clinical(SPIROMICS_JHS_ONLY_PROTEINS, SPIROMICS_JHS_ONLY_SNPS, SPIROMICS_JHS_ONLY_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_sep=",", clin_age_col=SPIROMICS_JHS_ONLY_AGE_COL,
-                                       clin_race_col=SPIROMICS_JHS_ONLY_RACE_COL, clin_gender_col=SPIROMICS_JHS_ONLY_GENDER_COL)
-
-def load_copdgene_p2_5k():
-    return load_proteins_snps_clinical(COPDGene_P2_5K_PROTEINS, COPDGene_P2_5K_SNPS, COPDGene_P2_5K_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P2_5K_AGE_COL,
-                                       clin_race_col=COPDGene_P2_5K_RACE_COL, clin_gender_col=COPDGene_P2_5K_GENDER_COL)
-
-def load_copdgene_p2_5k_all():
-    return load_proteins_snps_clinical(COPDGene_P2_5K_ALL_PROTEINS, COPDGene_P2_5K_ALL_SNPS, COPDGene_P2_5K_ALL_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P2_5K_ALL_AGE_COL,
-                                       clin_race_col=COPDGene_P2_5K_ALL_RACE_COL, clin_gender_col=COPDGene_P2_5K_ALL_GENDER_COL)
-
-def load_copdgene_p3_5k_all():
-    return load_proteins_snps_clinical(COPDGene_P3_5K_ALL_PROTEINS, COPDGene_P3_5K_ALL_SNPS, COPDGene_P3_5K_ALL_CLINICAL, protein_sep="\t",
-                                       snp_sep=",", clin_age_col=COPDGene_P3_5K_ALL_AGE_COL,
-                                       clin_race_col=COPDGene_P3_5K_ALL_RACE_COL, clin_gender_col=COPDGene_P3_5K_ALL_GENDER_COL)
-
-# Loads the training and testing datasets based on the flags from args.
-def load_data(args):
-    train_data_arg = args.train_data
-    test_data_arg = args.test_data
-
-    # Select the training dataset.
-    if train_data_arg == COPDGene_P1_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p1()
-    elif train_data_arg == COPDGene_P2_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p2()
-    elif train_data_arg == COPDGene_P2_JHS_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p2_jhs()
-    elif train_data_arg == COPDGene_P1_P2_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p1_p2()
-    elif train_data_arg == COPDGene_P2_5K_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p2_5k()
-    elif train_data_arg == COPDGene_P2_5K_ALL_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p2_5k_all()
-    elif train_data_arg == COPDGene_P3_5K_ALL_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p3_5k_all()
-    elif train_data_arg == SPIROMICS_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_spiromics()
-    elif train_data_arg == COPDGene_P1_JHS_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p1_jhs()
-    elif train_data_arg == SPIROMICS_JHS_PROTEINS:
-        train_p ,train_snp, train_clin, train_o_snp = load_spiromics_jhs()
-    elif train_data_arg == COPDGene_P1_JHS_ONLY_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_copdgene_p1_jhs_only()
-    elif train_data_arg == SPIROMICS_JHS_ONLY_NAME:
-        train_p, train_snp, train_clin, train_o_snp = load_spiromics_jhs_only()
-    else:
-        raise ValueError("bad dataset name.")
-
-    print("Loaded %s as training set." % train_data_arg)
-
-    if train_data_arg == test_data_arg:
-        test_p, test_snp, test_clin, test_o_snp = (train_p, train_snp, train_clin, train_o_snp)
-    else:
-        # Select the testing dataset.
-        if test_data_arg == COPDGene_P1_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_copdgene_p1()
-        elif test_data_arg == COPDGene_P2_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_copdgene_p2()
-        elif test_data_arg == COPDGene_P2_JHS_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_copdgene_p2_jhs()
-        elif test_data_arg == COPDGene_P1_P2_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_copdgene_p1_p2()
-        elif test_data_arg == COPDGene_P2_5K_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_copdgene_p2_5k()
-        elif test_data_arg == SPIROMICS_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_spiromics()
-        elif test_data_arg == SPIROMICS_JHS_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_spiromics_jhs()
-        elif test_data_arg == COPDGene_P1_JHS_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_copdgene_p1_jhs()
-        elif test_data_arg == COPDGene_P1_JHS_ONLY_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_copdgene_p1_jhs_only()
-        elif test_data_arg == SPIROMICS_JHS_ONLY_NAME:
-            test_p, test_snp, test_clin, test_o_snp = load_spiromics_jhs_only()
-        else:
-            raise ValueError("bad dataset name.")
-    print("Loaded %s as testing set." % test_data_arg)
-
-    # Check for overlap between train and test and correct (Only for COPDGene)
-    intersect_sids = set(train_p.index).intersection(test_p.index)
-    print("Found %d intersecting SIDs." % len(intersect_sids))
-
-    return train_data_arg, train_p, train_snp, train_clin, train_o_snp, test_data_arg, test_p, test_snp, test_clin, test_o_snp
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--train_data", type=str, choices=["COPDGene_P1",
@@ -665,10 +502,12 @@ if __name__ == "__main__":
                                                           "SPIROMICS",
                                                           "SPIROMICS_JHS",
                                                           "SPIROMICS_JHS_ONLY"])
-    parser.add_argument("--use_pqtls", nargs="+", type=int, help="Use only the top N pQTLs (sorted by FDR). Pass a single value or a set of values to test.",default=[100])
-    parser.add_argument("--mean_adjust",action="store_true")
-    parser.add_argument("--log_odds",action="store_true")
-    parser.add_argument("--skip_train",action="store_true")
+    parser.add_argument("--use_pqtls", nargs="+", type=int,
+                        help="Use only the top N pQTLs (sorted by FDR). Pass a single value or a set of values to test.",
+                        default=[100])
+    parser.add_argument("--mean_adjust", action="store_true")
+    parser.add_argument("--log_odds", action="store_true")
+    parser.add_argument("--skip_train", action="store_true")
     args = parser.parse_args()
 
     adj_suffix = "_adj" if args.mean_adjust else ""
@@ -680,7 +519,7 @@ if __name__ == "__main__":
     pqtls = pd.read_csv(PAIR_LIST)
     # Step 2.5: Sort pQTL list by abs. val of effect size (for using less that 144 SNPs).
     # Absolute value of effect size beta
-    #pqtls["abs_beta_p1"] = np.abs(pqtls["FDR"])
+    # pqtls["abs_beta_p1"] = np.abs(pqtls["FDR"])
     # Sort by this value.
     sort_pqtls = pqtls.sort_values("p-value", ascending=True)
     # top_n = sort_pqtls.iloc[:args.use_pqtls[0]]
@@ -688,53 +527,52 @@ if __name__ == "__main__":
     # n_jhs_pqtls = len(top_n.loc[sort_pqtls.set == "JHS"])
     # assert (n_copdgene_pqtls + n_jhs_pqtls) == len(top_n)
     # print("There are %d pQTLs from COPDGene P1, and %d pQTLs from JHS." % (n_copdgene_pqtls,n_jhs_pqtls))
-    #sort_pqtls = sort_pqtls.loc[sort_pqtls.set == "COPDGene_P1"]
+    # sort_pqtls = sort_pqtls.loc[sort_pqtls.set == "COPDGene_P1"]
     # Drop c-Jun, which is problematic
     sort_pqtls = sort_pqtls.drop(sort_pqtls.index[sort_pqtls.gene == "c-Jun"])
     # TEMPORARY, DELETE ME
-    #reduced_list = pd.read_csv("reduced_set_selection_jhs.csv",header=0,squeeze=True)
-    #sort_pqtls = sort_pqtls.loc[sort_pqtls.gene.isin(reduced_list)]
-    #use_pqtls = sort_pqtls.iloc[:i]
+    # reduced_list = pd.read_csv("reduced_set_selection_jhs.csv",header=0,squeeze=True)
+    # sort_pqtls = sort_pqtls.loc[sort_pqtls.gene.isin(reduced_list)]
+    # use_pqtls = sort_pqtls.iloc[:i]
     pqtl_pairs = [(x, y) for x, y in zip(sort_pqtls.SNP, sort_pqtls.gene)]
 
     # Step 3: Convert raw data into training and test datasets with x as protein measurements and y as genotype.
-    x_train, y_train, train_sids, x_test, y_test, test_sids, all_classes = get_train_test_2(pqtl_pairs, train_proteins,
-                                                                                            train_snps, test_proteins,
-                                                                                            test_snps,
-                                                                                            align_to_reference=args.mean_adjust,
-                                                                                            train_other_snps = train_other_snps,
-                                                                                            test_other_snps = test_other_snps)
-    #x_train = np.random.random(x_train.shape)
-    #x_test = np.random.random(x_test.shape)
+    x_train, y_train, train_sids, x_test, y_test, test_sids, all_classes = make_train_test(pqtl_pairs, train_proteins,
+                                                                                           train_snps, test_proteins,
+                                                                                           test_snps,
+                                                                                           align_to_reference=args.mean_adjust,
+                                                                                           train_other_snps=train_other_snps,
+                                                                                           test_other_snps=test_other_snps)
+    # x_train = np.random.random(x_train.shape)
+    # x_test = np.random.random(x_test.shape)
     # Step 4: Train model using training dataset.
-    trained_model, class_order, class_prior = train_model(x_train, y_train, all_classes,skip_train=args.skip_train)
-
+    trained_model, class_order, class_prior = train_model(x_train, y_train, all_classes, skip_train=args.skip_train)
 
     # Step 4.5: Dump out trained model in pickle (binary) format so that we can predict without using the training data.
     ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
-    #sort_pqtls["gene"] = sort_pqtls["gene_JHS"]
-    dump_obj = {"model":trained_model,
-                "class_order":class_order,
-                "class_prior":class_prior,
-                "sort_pqtls":sort_pqtls,
-                "ref_snps":ref_snps,
-                "all_classes":all_classes,
-                "is_trained_model":not args.skip_train}
+    # sort_pqtls["gene"] = sort_pqtls["gene_JHS"]
+    dump_obj = {"model": trained_model,
+                "class_order": class_order,
+                "class_prior": class_prior,
+                "sort_pqtls": sort_pqtls,
+                "ref_snps": ref_snps,
+                "all_classes": all_classes,
+                "is_trained_model": not args.skip_train}
 
-    with open("frozen_model.pkl","wb") as write_file:
-        pickle.dump(dump_obj,write_file)
+    with open("frozen_model.pkl", "wb") as write_file:
+        pickle.dump(dump_obj, write_file)
     # Step 5: Generate prediction probabilities for all 3 genotype classes at each pQTL.
     # Do this for both training and testing datasets.
-    train_preds = predict_model(trained_model, x_train,log_odds=args.log_odds)
+    train_preds = predict_model(trained_model, x_train, log_odds=args.log_odds)
     # Don't predict twice if using the same dataset
     if test_data != train_data:
-        test_preds = predict_model(trained_model, x_test,log_odds=args.log_odds)
+        test_preds = predict_model(trained_model, x_test, log_odds=args.log_odds)
     else:
         test_preds = train_preds
 
     # Step 5.5: Add in the genotypes of subjects without protein measurements to increase the pool size.
-    #y_train = np.concatenate([y_train, train_other_snps.loc[:, [p[0] for p in pqtl_pairs]].values.T], axis=-1)
-    #y_test = np.concatenate([y_test, test_other_snps.loc[:, [p[0] for p in pqtl_pairs]].values.T], axis=-1)
+    # y_train = np.concatenate([y_train, train_other_snps.loc[:, [p[0] for p in pqtl_pairs]].values.T], axis=-1)
+    # y_test = np.concatenate([y_test, test_other_snps.loc[:, [p[0] for p in pqtl_pairs]].values.T], axis=-1)
 
     train_other_sids = np.array(train_other_snps.index)
     test_other_sids = np.array(test_other_snps.index)
@@ -748,32 +586,35 @@ if __name__ == "__main__":
     results_list = []
 
     # TEMP OUTPUTS FOR FEATURE SELECTION
-    np.save("COPDGene_P1_train_preds.npy",train_preds)
-    np.save("COPDGene_P1_train_y.npy",y_train)
-    with open("COPDGene_P1_train_corder.pkl","wb") as f:
-        pickle.dump(class_order,f)
+    np.save("COPDGene_P1_train_preds.npy", train_preds)
+    np.save("COPDGene_P1_train_y.npy", y_train)
+    with open("COPDGene_P1_train_corder.pkl", "wb") as f:
+        pickle.dump(class_order, f)
 
     for res_i in results_index:
         print("Running with i=%d" % res_i)
         # Step 6: For each known protein palette, generate a probability score of that protein palette arising from each
         # genotype vector in the pool.
-        train_prob_m= eval_model(train_preds, y_train, class_order, class_prior, num_proteins=res_i, memo_tag=train_data, log_odds=args.log_odds)
+        train_prob_m = eval_model(train_preds, y_train, class_order, class_prior, num_proteins=res_i,
+                                  memo_tag=train_data, log_odds=args.log_odds)
         if test_data != train_data:
-            test_prob_m = eval_model(test_preds, y_test, class_order, class_prior, num_proteins=res_i, memo_tag=test_data,log_odds=args.log_odds)
+            test_prob_m = eval_model(test_preds, y_test, class_order, class_prior, num_proteins=res_i,
+                                     memo_tag=test_data, log_odds=args.log_odds)
         else:
             test_prob_m = train_prob_m
 
         # Compute the train/test accuracy and charts for performance of the model.
         row = train_test_accuracy(train_prob_m, train_sids, train_clinical, test_prob_m, test_sids, test_clinical,
                                   train_title=train_data, test_title=test_data,
-                                  fname="train_%s_test_%s_%d%s%s_proteins_accuracy.png" % (train_data, test_data, res_i, adj_suffix,log_odds_suffix),
-                                  draw_probs=False, test_other_sids = test_other_sids, train_other_sids = train_other_sids)
+                                  fname="train_%s_test_%s_%d%s%s_proteins_accuracy.png" % (
+                                      train_data, test_data, res_i, adj_suffix, log_odds_suffix),
+                                  draw_probs=False, test_other_sids=test_other_sids, train_other_sids=train_other_sids)
         results_list.append(row)
 
-    out_df = pd.DataFrame.from_records(results_list,index=results_index,columns=["Train Top-1 Accuracy",
-                                                                                 "Train Top 3 Accuracy",
-                                                                                 "Train Top 1%% Accuracy",
-                                                                                 "Test Top 1 Accuracy",
-                                                                                 "Test Top 3 Accuracy",
-                                                                                 "Test Top 1%% Accuracy"])
-    out_df.to_csv("test_results_{}_{}{}{}.csv".format(train_data,test_data,adj_suffix,log_odds_suffix))
+    out_df = pd.DataFrame.from_records(results_list, index=results_index, columns=["Train Top-1 Accuracy",
+                                                                                   "Train Top 3 Accuracy",
+                                                                                   "Train Top 1%% Accuracy",
+                                                                                   "Test Top 1 Accuracy",
+                                                                                   "Test Top 3 Accuracy",
+                                                                                   "Test Top 1%% Accuracy"])
+    out_df.to_csv("test_results_{}_{}{}{}.csv".format(train_data, test_data, adj_suffix, log_odds_suffix))
