@@ -110,14 +110,14 @@ ALL_DATASET_NAMES = [COPDGene_P1_NAME,
                      SPIROMICS_JHS_NAME,
                      SPIROMICS_JHS_ONLY_NAME]
 # P1/P2 1.3K
-# PAIR_LIST = "output/use_pqtls_p1_only.csv"
-# REFERENCE_SNPS = "output/reference_snps_p1.csv"
+PAIR_LIST = "output/use_pqtls_p1_only.csv"
+REFERENCE_SNPS = "output/reference_snps_p1.csv"
 # P1/P2 1.3K JHS Proteins Added
-# PAIR_LIST = "output/use_pqtls_p1_and_jhs.csv"
-# REFERENCE_SNPS = "output/u_reference_snps_p1.csv"
+#PAIR_LIST = "output/use_pqtls_p1_and_jhs.csv"
+#REFERENCE_SNPS = "output/u_reference_snps_p1.csv"
 # P1/P2 1.3K JHS Proteins Only
-PAIR_LIST = "output/jhs_only/use_pqtls_jhs_only.csv"
-REFERENCE_SNPS = "output/jhs_only/reference_snps_jhs.csv"
+#PAIR_LIST = "output/jhs_only/use_pqtls_jhs_only.csv"
+#REFERENCE_SNPS = "output/jhs_only/reference_snps_jhs.csv"
 # 5K w/ Protein Target Name
 # PAIR_LIST = "output/5k_all/use_pqtls_p2_5k_1727.csv"
 # REFERENCE_SNPS = "output/5k_all/reference_snps_p2_5k_1727.csv"

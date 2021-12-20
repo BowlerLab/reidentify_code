@@ -174,8 +174,9 @@ def load_data(args):
     print("Loaded %s as testing set." % test_data_arg)
 
     # Check for overlap between train and test and correct (Only for COPDGene)
-    intersect_sids = set(train_p.index).intersection(test_p.index)
-    print("Found %d intersecting SIDs." % len(intersect_sids))
+    if train_p is not None and test_p is not None:
+        intersect_sids = set(train_p.index).intersection(test_p.index)
+        print("Found %d intersecting SIDs." % len(intersect_sids))
 
     return train_data_arg, train_p, train_snp, train_clin, train_o_snp, test_data_arg, test_p, test_snp, test_clin, test_o_snp
 
