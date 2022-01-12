@@ -41,7 +41,8 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
             plt.figure()
             sns.histplot(data=tmp_df, x=prot, hue=snp, palette="tab10", hue_order=order_snps)
             # PRINTS Figure 3a
-            plt.savefig("figs/hists/%s_%s_unadj.png" % (snp, prot))
+            prot_norm = prot.replace(" ","_").replace(",","_").replace("/","_").lower()
+            plt.savefig("figs/hists/%s_%s_unadj.png" % (snp, prot_norm))
             plt.close()
 
     if align_to_reference:
@@ -82,7 +83,8 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
                 plt.figure()
                 sns.histplot(data=tmp_df, x=prot, hue=snp, hue_order=order_snps, palette="tab10")
                 # Prints Figure 3b
-                plt.savefig("figs/hists/%s_%s_adj.png" % (snp, prot))
+                prot_norm = prot.replace(" ", "_").replace(",", "_").replace("/", "_").lower()
+                plt.savefig("figs/hists/%s_%s_adj.png" % (snp, prot_norm))
                 plt.close()
     assert np.all(
         train_data.index.values == train_labels.index.values), "Indices for train_data and train_labels do not match!"
@@ -124,27 +126,27 @@ def train_model(train_proteins, train_snps, all_classes, skip_train=False):
         if not skip_train:
             nb.partial_fit(use_x, use_y, classes=all_classes[i])
 
-        # Check for sICAM-1 manually
-        if i == 2:
-            from matplotlib.cm import tab10
-            # FIGURE 1.a
-            tmp_df = pd.DataFrame({"sICAM-1": use_x.squeeze(), "Genotype": use_y.squeeze()})
-            plot_pts = np.linspace(use_x.min(), use_x.max(), 200)
-            preds = nb.predict_proba(plot_pts.reshape(-1, 1))
-            fig, ax = plt.subplots(ncols=2, figsize=(12, 5))
-            sns.boxplot(data=tmp_df, x="Genotype", y="sICAM-1", ax=ax[0], order=reversed(nb.classes_),
-                        palette={"AA": tab10(0),
-                                 "GA": tab10(1),
-                                 "GG": tab10(2)})
-            ax[1].stackplot(plot_pts, preds.T, labels=nb.classes_)
-            ax[1].set_xlim(plot_pts.min(), plot_pts.max())
-            ax[1].set_ylim(0, 1)
-            ax[1].legend(title="Genotype", fancybox=False, edgecolor="black", facecolor="white", framealpha=1.0)
-            ax[1].set_xlabel("Log-transformed protein level for sICAM-1")
-            ax[1].set_ylabel("Genotype Probability")
-            plt.tight_layout()
-            plt.savefig("figs/sICAM_prob_cuml.png")
-            plt.close()
+        # # Check for sICAM-1 manually
+        # if i == 2:
+        #     from matplotlib.cm import tab10
+        #     # FIGURE 1.a
+        #     tmp_df = pd.DataFrame({"sICAM-1": use_x.squeeze(), "Genotype": use_y.squeeze()})
+        #     plot_pts = np.linspace(use_x.min(), use_x.max(), 200)
+        #     preds = nb.predict_proba(plot_pts.reshape(-1, 1))
+        #     fig, ax = plt.subplots(ncols=2, figsize=(12, 5))
+        #     sns.violinplot(data=tmp_df, x="Genotype", y="sICAM-1", ax=ax[0], order=reversed(nb.classes_),
+        #                 palette={"AA": tab10(0),
+        #                          "GA": tab10(1),
+        #                          "GG": tab10(2)})
+        #     ax[1].stackplot(plot_pts, preds.T, labels=nb.classes_)
+        #     ax[1].set_xlim(plot_pts.min(), plot_pts.max())
+        #     ax[1].set_ylim(0, 1)
+        #     ax[1].legend(title="Genotype", fancybox=False, edgecolor="black", facecolor="white", framealpha=1.0)
+        #     ax[1].set_xlabel("Log-transformed protein level for sICAM-1")
+        #     ax[1].set_ylabel("Genotype Probability")
+        #     plt.tight_layout()
+        #     plt.savefig("figs/sICAM_prob_cuml.png")
+        #     plt.close()
 
         models.append(nb)
         # assert np.all(nb.classes_ == all_classes[i])

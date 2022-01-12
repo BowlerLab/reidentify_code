@@ -31,7 +31,8 @@ def train_test_accuracy(train_prob_matrices, train_sids, train_clinical, test_pr
     # Prints Figure
     if draw_probs:
         make_comparison_df(test_prob_matrices, test_sids, test_clinical, test_title + "_prob_dist",
-                           other_sids=test_other_sids)
+                           other_sids=test_other_sids
+                           )
 
     train_prob_matrix = train_prob_matrices
     test_prob_matrix = test_prob_matrices
@@ -197,12 +198,12 @@ def make_comparison_df(prob_matrix, sids, clinical, title=None, other_sids=None)
         lambda x: sids_y_map[x["True Subject"]] + x["y_jitter_val"], axis=1)
 
     # Get actual vs predicted SIDs for the mismatches:
-    pred_vs_actual = disp_df.groupby(level=0).apply(lambda df: {"Actual": df.index.get_level_values("True Subject")[0],
-                                                                "Predicted": df.loc[
-                                                                    df.prob == df.prob.max(), "Predicted Subject"].values[
-                                                                    0]})
-    pred_vs_actual = pd.DataFrame.from_records(pred_vs_actual)
-    pred_vs_actual.to_csv("{}_actual_vs_predicted.csv".format(title.replace("_prob_dist", "")))
+    # pred_vs_actual = disp_df.groupby(level=0).apply(lambda df: {"Actual": df.index.get_level_values("True Subject")[0],
+    #                                                             "Predicted": df.loc[
+    #                                                                 df.prob == df.prob.max(), "Predicted Subject"].values[
+    #                                                                 0]})
+    # pred_vs_actual = pd.DataFrame.from_records(pred_vs_actual)
+    # pred_vs_actual.to_csv("{}_actual_vs_predicted.csv".format(title.replace("_prob_dist", "")))
 
     nonmatch_df = disp_df.loc[~disp_df["match"]]
     match_df = disp_df.loc[disp_df["match"]]
@@ -220,7 +221,7 @@ def make_comparison_df(prob_matrix, sids, clinical, title=None, other_sids=None)
     ax[0].legend(fancybox=False, edgecolor="black", loc="upper left", framealpha=1.0)
     plt.tight_layout()
     # PRINTS FIGURE 2
-    plt.savefig("figs/{}.png".format(title))
+    plt.savefig("{}.png".format(title))
 
 
 def logsumexp(v, axis=None):

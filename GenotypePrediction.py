@@ -1,3 +1,4 @@
+import datetime
 import pickle
 import argparse
 import numpy as np
@@ -40,6 +41,10 @@ if __name__ == "__main__":
     parser.add_argument("--log_odds", action="store_true")
     parser.add_argument("--skip_train", action="store_true")
     parser.add_argument("--draw_probs", action="store_true")
+    parser.add_argument("--output_model",
+                        type=str,
+                        help="Name of the model file to output.",
+                        default="model_{}.pkl".format(datetime.datetime.now().strftime("%Y_%b%d_%H%M_%S")))
     args = parser.parse_args()
 
     adj_suffix = "_adj" if args.mean_adjust else ""
@@ -75,7 +80,9 @@ if __name__ == "__main__":
                                                                                            test_snps,
                                                                                            align_to_reference=args.mean_adjust,
                                                                                            train_other_snps=train_other_snps,
-                                                                                           test_other_snps=test_other_snps)
+                                                                                           test_other_snps=test_other_snps,
+                                                                                           #dump_charts=True
+                                                                                           )
     # x_train = np.random.random(x_train.shape)
     # x_test = np.random.random(x_test.shape)
 
@@ -94,7 +101,7 @@ if __name__ == "__main__":
                 "all_classes": all_classes,
                 "is_trained_model": not args.skip_train}
 
-    with open("old/frozen_model_jhs_untrained_12_7.pkl", "wb") as write_file:
+    with open(args.output_model, "wb") as write_file:
         pickle.dump(dump_obj, write_file)
     # Step 5: Generate prediction probabilities for all 3 genotype classes at each pQTL.
     # Do this for both training and testing datasets.
