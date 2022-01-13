@@ -121,12 +121,12 @@ ALL_DATASET_NAMES = [COPDGene_P1_NAME,
 # P1/P2 1.3K JHS Proteins Added
 #PAIR_LIST = "output/use_pqtls_jhs_182.csv"
 #REFERENCE_SNPS = "output/u_reference_snps_p1.csv"
-#PAIR_LIST = "output/1_10_22/use_pqtls_1_10_22.csv"
-#REFERENCE_SNPS = "output/1_10_22/reference_snps_1_10_22.csv"
+PAIR_LIST = "output/1_10_22/use_pqtls_1_10_22.csv"
+REFERENCE_SNPS = "output/1_10_22/reference_snps_1_10_22.csv"
 
 # P1/P2 1.3K JHS Proteins w/ 599 pQTLs.
-PAIR_LIST = "output/1_10_22/use_pqtls_599_1_10_22.csv"
-REFERENCE_SNPS = "output/1_10_22/reference_snps_599_1_10_22.csv"
+#PAIR_LIST = "output/1_10_22/use_pqtls_599_1_10_22.csv"
+#REFERENCE_SNPS = "output/1_10_22/reference_snps_599_1_10_22.csv"
 # P1/P2 1.3K JHS Proteins Only
 #PAIR_LIST = "output/jhs_only/use_pqtls_jhs_only.csv"
 #REFERENCE_SNPS = "output/jhs_only/reference_snps_jhs.csv"

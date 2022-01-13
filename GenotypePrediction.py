@@ -90,9 +90,9 @@ if __name__ == "__main__":
     trained_model, class_order, class_prior = train_model(x_train, y_train, all_classes, skip_train=args.skip_train)
     # Step 4.5: Dump out trained model in pickle (binary) format so that we can predict without using the training data.
     ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
-    jhs_gene_mapping = pd.read_csv("jhs_mapping_file.csv")
-    jhs_name_lookup = {t:jhs_t for t,jhs_t in zip(jhs_gene_mapping.Target,jhs_gene_mapping.jhs_name)}
-    sort_pqtls["gene"] = sort_pqtls["gene"].apply(lambda x: jhs_name_lookup[x])
+    #jhs_gene_mapping = pd.read_csv("jhs_mapping_file.csv")
+    #jhs_name_lookup = {t:jhs_t for t,jhs_t in zip(jhs_gene_mapping.Target,jhs_gene_mapping.jhs_name)}
+    #sort_pqtls["gene"] = sort_pqtls["gene"].apply(lambda x: jhs_name_lookup[x])
     dump_obj = {"model": trained_model,
                 "class_order": class_order,
                 "class_prior": class_prior,
