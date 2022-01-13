@@ -128,10 +128,10 @@ if __name__ == "__main__":
     results_list = []
 
     # TEMP OUTPUTS FOR FEATURE SELECTION
-    np.save("old/COPDGene_P1_train_preds.npy", train_preds)
-    np.save("old/COPDGene_P1_train_y.npy", y_train)
-    with open("old/COPDGene_P1_train_corder.pkl", "wb") as f:
-        pickle.dump(class_order, f)
+    #np.save("old/COPDGene_P1_train_preds.npy", train_preds)
+    #np.save("old/COPDGene_P1_train_y.npy", y_train)
+    #with open("old/COPDGene_P1_train_corder.pkl", "wb") as f:
+    #    pickle.dump(class_order, f)
 
     for res_i in results_index:
         print("Running with i=%d" % res_i)
