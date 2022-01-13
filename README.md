@@ -43,5 +43,7 @@ The code will output a CSV file with performance figures into the main directory
 
 The code will also generate a performance figure in the `figs/` directory. 
 
+The model will also output a trained model `.pkl` file, which other code can load to perform prediction on a trained model.
+
 
 
