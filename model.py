@@ -15,13 +15,45 @@ tag_dict = {}
 
 def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log_transform=True,
                     align_to_reference=False, dump_charts=False, train_other_snps=None, test_other_snps=None):
+    """ Formats the training and testing data for input into the model.
+    Parameters
+    ----------
+    pqtls
+        A list of tuples, each containing the name of a SNP and protein, respectively in the format (SNP, protein)
+    train_data
+        Formatted training data (protein data)
+    train_labels
+        Formatted training labels (genotype/SNP data)
+    test_data
+        Formatted testing data (protein data)
+    test_labels
+        Formatted testing labels (genotype/SNP data)
+    log_transform : bool
+        If True, protein/X values will be transformed with log(x+1) before model training. If False, values are not
+        transformed.
+    align_to_reference : bool
+        Before training, adjust the proteins levels for pQTL using the mean-shift method.
+    dump_charts : bool
+        Write out some figures in addition to the text output.
+    train_other_snps
+        Other genotype profiles (presumably without protein data) to be used as part of the genotype pool.
+    test_other_snps
+        Other genotype profiles to be used as part of the genotype pool.
+
+    Returns
+    -------
+    Formatted training and testing data.
+    """
     snp_list = [p[0] for p in pqtls]
     prot_list = [p[1] for p in pqtls]
     ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
     ref_snps = ref_snps.loc[snp_list].values[:, 0]
-
+    if len(ref_snps[0]) == 1:
+        ref_snps = ref_snps*2
     xtrain_tmp = train_data.loc[:, prot_list].values
     xtest_tmp = test_data.loc[:, prot_list].values
+
+
 
     ytrain_tmp = train_labels.loc[:, snp_list].values
     ytest_tmp = test_labels.loc[:, snp_list].values
@@ -30,6 +62,11 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
     if log_transform:
         xtrain_tmp = np.log(1 + xtrain_tmp)
         xtest_tmp = np.log(1 + xtest_tmp)
+
+    unadj_tmp_df_1 = pd.DataFrame(xtrain_tmp,index=train_data.index,columns=prot_list)
+    unadj_tmp_df_2 = pd.DataFrame(xtest_tmp,index=test_data.index,columns=prot_list)
+    unadj_tmp_df_all = pd.concat([unadj_tmp_df_1,unadj_tmp_df_2]).sort_index()
+    unadj_tmp_df_all.to_csv("COPDGene_P2_5K_Unadjusted.csv")
 
     if dump_charts:
         for j, (snp, prot) in enumerate(pqtls):
@@ -104,11 +141,46 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
 
     all_classes = [np.setdiff1d(np.unique(x), ["nan"]) for x in tmp_concat]
 
+    # data_idcs = [prot_list.index("DERM"),prot_list.index("sICAM-5")]
+    # prefix = "adj_" if align_to_reference else "unadj_"
+    # tmp_train_out = pd.DataFrame(xtrain_tmp[:,data_idcs],index=train_data.index,columns=["DERM","sICAM-5"])
+    # tmp_test_out = pd.DataFrame(xtest_tmp[:,data_idcs],index=test_data.index,columns=["DERM","sICAM-5"])
+    #
+    # tmp_train_snps_out = pd.DataFrame(ytrain_tmp[:,data_idcs],index=train_labels.index,columns=["rs610403","rs281440"])
+    # tmp_test_snps_out = pd.DataFrame(ytest_tmp[:,data_idcs],index=test_labels.index,columns=["rs610403","rs281440"])
+    #
+    # tmp_train_out.to_csv(prefix+"derm_sicam5_train.csv")
+    # tmp_train_snps_out.to_csv(prefix+"derm_sicam5_train_snps.csv")
+    #
+    # tmp_test_out.to_csv(prefix+"derm_sicam5_test.csv")
+    # tmp_test_snps_out.to_csv(prefix+"derm_sicam5_test_snps.csv")
+
+    tmp_df_1 = pd.DataFrame(xtrain_tmp,index=train_data.index,columns=prot_list)
+    tmp_df_2 = pd.DataFrame(xtest_tmp,index=test_data.index,columns=prot_list)
+    tmp_df_all = pd.concat([tmp_df_1,tmp_df_2]).sort_index()
+    tmp_df_all.to_csv("COPDGene_P2_5K_GenotypeAdjusted.csv")
+
     return np.transpose(xtrain_tmp), np.transpose(ytrain_tmp), train_sids, np.transpose(xtest_tmp), np.transpose(
         ytest_tmp), test_sids, all_classes
 
 
 def train_model(train_proteins, train_snps, all_classes, skip_train=False):
+    """ Trains a GaussianNB model for each pQTL.
+    Parameters
+    ----------
+    train_proteins
+        Protein data used for model training
+    train_snps
+        Genotype data used for model training
+    all_classes
+        A list of all possible genotypes for each pQTL
+    skip_train
+        Boolean flag to skip training (useful for just dumping an untrained model file).
+
+    Returns
+    -------
+    A list of trained models (one per pQTL).
+    """
     assert (len(train_proteins) == len(train_snps))
     models = []
     class_orders = []
@@ -156,6 +228,19 @@ def train_model(train_proteins, train_snps, all_classes, skip_train=False):
 
 
 def predict_model(models, test_proteins, log_odds=False):
+    """
+    Parameters
+    ----------
+    models
+        List of models output from train_model.
+    test_proteins
+        List of proteins to predict the genotype for.
+    log_odds : bool
+        If true, use the log-odds method for prediction.
+    Returns
+    -------
+    A set of genotype predictions for test_proteins.
+    """
     assert (len(test_proteins) == len(models))
 
     total_preds = []
@@ -176,11 +261,36 @@ def predict_model(models, test_proteins, log_odds=False):
 
 
 def make_progress_bar(progress, width=50):
+    """Generates a progress bar for monitoring output progress.
+    """
     bar = (("=" * (int(progress * width) - 1)) + ">").ljust(width, " ")
     return "[" + bar + "]"
 
 
 def eval_model(y_pred, y_true, class_orders, class_priors, num_proteins=100, memo_tag="default", log_odds=False):
+    """
+    Parameters
+    ----------
+    y_pred
+        A set of predicted genotype profiles output from predict_model
+    y_true
+        A pool of possible genotype profiles which we will match each proteome profile against.
+    class_orders
+        The order that classes are arranged in each model.
+    class_priors
+        The prior probabilities for each class.
+    num_proteins
+        The number of proteins to use for model evaluation
+    memo_tag
+        A memoization tag. If we are calculating output results for multiple #s of pQTLs, we can store previous results
+        and reuse them to reduce the amount of re-computed results.
+    log_odds
+        Use log odds for prediction.
+
+    Returns
+    -------
+
+    """
     # For each row of y_true
     y_true_copy = y_true.copy()
     # Make copy of y_true and keep track of where NaNs are

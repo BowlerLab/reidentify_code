@@ -5,35 +5,30 @@ import numpy as np
 import pandas as pd
 from dataloader import load_data
 from metrics import train_test_accuracy
-from paths import PAIR_LIST,REFERENCE_SNPS
-from model import make_train_test,train_model,predict_model,eval_model
+from paths import PAIR_LIST, REFERENCE_SNPS
+from model import make_train_test, train_model, predict_model, eval_model
+
+DATASET_CHOCIES = ["COPDGene_P1",
+                   "COPDGene_P1_JHS",
+                   "COPDGene_P1_JHS_ONLY",
+                   "COPDGene_P2",
+                   "COPDGene_P2_JHS",
+                   "COPDGene_P1_P2",
+                   "COPDGene_P2_5K",
+                   "COPDGene_P2_5K_ALL",
+                   "COPDGene_P3_5K_ALL",
+                   "SPIROMICS",
+                   "SPIROMICS_JHS",
+                   "SPIROMICS_JHS_ONLY",
+                   "COPDGene_5k_TRAIN",
+                   "COPDGene_5k_TEST",
+                   "COPDGene_5k_QC_TRAIN",
+                   "COPDGene_5k_QC_TEST"]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train_data", type=str, choices=["COPDGene_P1",
-                                                           "COPDGene_P1_JHS",
-                                                           "COPDGene_P1_JHS_ONLY",
-                                                           "COPDGene_P2",
-                                                           "COPDGene_P2_JHS",
-                                                           "COPDGene_P1_P2",
-                                                           "COPDGene_P2_5K",
-                                                           "COPDGene_P2_5K_ALL",
-                                                           "COPDGene_P3_5K_ALL",
-                                                           "SPIROMICS",
-                                                           "SPIROMICS_JHS",
-                                                           "SPIROMICS_JHS_ONLY"])
-    parser.add_argument("--test_data", type=str, choices=["COPDGene_P1",
-                                                          "COPDGene_P1_JHS",
-                                                          "COPDGene_P1_JHS_ONLY",
-                                                          "COPDGene_P2",
-                                                          "COPDGene_P2_JHS",
-                                                          "COPDGene_P1_P2",
-                                                          "COPDGene_P2_5K",
-                                                          "COPDGene_P2_5K_ALL",
-                                                          "COPDGene_P3_5K_ALL",
-                                                          "SPIROMICS",
-                                                          "SPIROMICS_JHS",
-                                                          "SPIROMICS_JHS_ONLY"])
+    parser.add_argument("--train_data", type=str, choices=DATASET_CHOCIES)
+    parser.add_argument("--test_data", type=str, choices=DATASET_CHOCIES)
     parser.add_argument("--use_pqtls", nargs="+", type=int,
                         help="Use only the top N pQTLs (sorted by FDR). Pass a single value or a set of values to test.",
                         default=[100])
@@ -55,23 +50,12 @@ if __name__ == "__main__":
 
     # Step 2: Read pQTL list.
     pqtls = pd.read_csv(PAIR_LIST)
-    # Step 2.5: Sort pQTL list by abs. val of effect size (for using less that 144 SNPs).
-    # Absolute value of effect size beta
-    # pqtls["abs_beta_p1"] = np.abs(pqtls["FDR"])
+    # Step 2.5: Sort pQTL list by p-value.
     # Sort by this value.
     sort_pqtls = pqtls.sort_values("p-value", ascending=True)
-    # top_n = sort_pqtls.iloc[:args.use_pqtls[0]]
-    # n_copdgene_pqtls = len(top_n.loc[sort_pqtls.set == "COPDGene_P1"])
-    # n_jhs_pqtls = len(top_n.loc[sort_pqtls.set == "JHS"])
-    # assert (n_copdgene_pqtls + n_jhs_pqtls) == len(top_n)
-    # print("There are %d pQTLs from COPDGene P1, and %d pQTLs from JHS." % (n_copdgene_pqtls,n_jhs_pqtls))
-    # sort_pqtls = sort_pqtls.loc[sort_pqtls.set == "COPDGene_P1"]
     # Drop c-Jun, which is problematic
     sort_pqtls = sort_pqtls.drop(sort_pqtls.index[sort_pqtls.gene == "c-Jun"])
-    # TEMPORARY, DELETE ME
-    # reduced_list = pd.read_csv("reduced_set_selection_jhs.csv",header=0,squeeze=True)
-    # sort_pqtls = sort_pqtls.loc[sort_pqtls.gene.isin(reduced_list)]
-    # use_pqtls = sort_pqtls.iloc[:i]
+    # sort_pqtls = sort_pqtls.drop(sort_pqtls.index[~sort_pqtls.gene.isin(["DERM","sICAM-5"])])
     pqtl_pairs = [(x, y) for x, y in zip(sort_pqtls.SNP, sort_pqtls.gene)]
 
     # Step 3: Convert raw data into training and test datasets with x as protein measurements and y as genotype.
@@ -81,18 +65,13 @@ if __name__ == "__main__":
                                                                                            align_to_reference=args.mean_adjust,
                                                                                            train_other_snps=train_other_snps,
                                                                                            test_other_snps=test_other_snps,
-                                                                                           #dump_charts=True
+                                                                                           # dump_charts=True
                                                                                            )
-    # x_train = np.random.random(x_train.shape)
-    # x_test = np.random.random(x_test.shape)
-
     # Step 4: Train model using training dataset.
     trained_model, class_order, class_prior = train_model(x_train, y_train, all_classes, skip_train=args.skip_train)
     # Step 4.5: Dump out trained model in pickle (binary) format so that we can predict without using the training data.
     ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
-    #jhs_gene_mapping = pd.read_csv("jhs_mapping_file.csv")
-    #jhs_name_lookup = {t:jhs_t for t,jhs_t in zip(jhs_gene_mapping.Target,jhs_gene_mapping.jhs_name)}
-    #sort_pqtls["gene"] = sort_pqtls["gene"].apply(lambda x: jhs_name_lookup[x])
+
     dump_obj = {"model": trained_model,
                 "class_order": class_order,
                 "class_prior": class_prior,
@@ -127,12 +106,6 @@ if __name__ == "__main__":
     results_index = args.use_pqtls
     results_list = []
 
-    # TEMP OUTPUTS FOR FEATURE SELECTION
-    np.save("old/COPDGene_P1_train_preds.npy", train_preds)
-    np.save("old/COPDGene_P1_train_y.npy", y_train)
-    with open("old/COPDGene_P1_train_corder.pkl", "wb") as f:
-        pickle.dump(class_order, f)
-
     for res_i in results_index:
         print("Running with i=%d" % res_i)
         # Step 6: For each known protein palette, generate a probability score of that protein palette arising from each
@@ -152,7 +125,8 @@ if __name__ == "__main__":
                                   train_title=train_data, test_title=test_data,
                                   fname="train_%s_test_%s_%d%s%s_proteins_accuracy.png" % (
                                       train_data, test_data, res_i, adj_suffix, log_odds_suffix),
-                                  draw_probs=args.draw_probs & (res_i == 100), test_other_sids=test_other_sids, train_other_sids=train_other_sids)
+                                  draw_probs=args.draw_probs & (res_i == 100), test_other_sids=test_other_sids,
+                                  train_other_sids=train_other_sids)
         results_list.append(row)
 
     out_df = pd.DataFrame.from_records(results_list, index=results_index, columns=["Train Top-1 Accuracy",

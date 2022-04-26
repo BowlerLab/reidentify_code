@@ -114,6 +114,29 @@ def load_copdgene_p3_5k_all():
                                        clin_race_col=COPDGene_P3_5K_ALL_RACE_COL,
                                        clin_gender_col=COPDGene_P3_5K_ALL_GENDER_COL)
 
+def load_copdgene_5k_train():
+    return load_proteins_snps_clinical(COPDGene_5k_TRAIN_PROTEINS,COPDGene_5k_TRAIN_GENO,
+                                       COPDGene_5k_TRAIN_CLINICAL, protein_sep=",",snp_sep="\t",
+                                       clin_age_col=COPDGene_5k_TRAIN_AGE_COL,clin_race_col=COPDGene_5k_TRAIN_RACE_COL,
+                                       clin_gender_col=COPDGene_5k_TRAIN_GENDER_COL)
+
+def load_copdgene_5k_test():
+    return load_proteins_snps_clinical(COPDGene_5k_TEST_PROTEINS,COPDGene_5k_TEST_GENO,
+                                       COPDGene_5k_TEST_CLINICAL, protein_sep=",",snp_sep="\t",
+                                       clin_age_col=COPDGene_5k_TEST_AGE_COL,clin_race_col=COPDGene_5k_TEST_RACE_COL,
+                                       clin_gender_col=COPDGene_5k_TEST_GENDER_COL)
+
+def load_copdgene_5k_qc_train():
+    return load_proteins_snps_clinical(COPDGene_5k_QC_TRAIN_PROTEINS,COPDGene_5k_QC_TRAIN_GENO,
+                                       COPDGene_5k_QC_TRAIN_CLINICAL, protein_sep=",",snp_sep=",",
+                                       clin_age_col=COPDGene_5k_QC_TRAIN_AGE_COL,clin_race_col=COPDGene_5k_QC_TRAIN_RACE_COL,
+                                       clin_gender_col=COPDGene_5k_QC_TRAIN_GENDER_COL)
+
+def load_copdgene_5k_qc_test():
+    return load_proteins_snps_clinical(COPDGene_5k_QC_TEST_PROTEINS,COPDGene_5k_QC_TEST_GENO,
+                                       COPDGene_5k_QC_TEST_CLINICAL, protein_sep=",",snp_sep=",",
+                                       clin_age_col=COPDGene_5k_QC_TEST_AGE_COL,clin_race_col=COPDGene_5k_QC_TEST_RACE_COL,
+                                       clin_gender_col=COPDGene_5k_QC_TEST_GENDER_COL)
 
 def load_dataset(name):
     # Select the training dataset.
@@ -141,6 +164,14 @@ def load_dataset(name):
         prots, snps, clin, other_snps = load_copdgene_p1_jhs_only()
     elif name == SPIROMICS_JHS_ONLY_NAME:
         prots, snps, clin, other_snps = load_spiromics_jhs_only()
+    elif name == COPDGene_5k_TRAIN_NAME:
+        prots, snps, clin, other_snps = load_copdgene_5k_train()
+    elif name == COPDGene_5k_TEST_NAME:
+        prots, snps, clin, other_snps = load_copdgene_5k_test()
+    elif name == COPDGene_5k_QC_TRAIN_NAME:
+        prots, snps, clin, other_snps = load_copdgene_5k_qc_train()
+    elif name == COPDGene_5k_QC_TEST_NAME:
+        prots, snps, clin, other_snps = load_copdgene_5k_qc_test()
     else:
         raise ValueError("bad dataset name.")
     return prots, snps, clin, other_snps

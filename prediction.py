@@ -13,7 +13,7 @@ from metrics import train_test_accuracy,make_comparison_df
 VERSION = 0.1
 
 
-def load_files(snp_path, protein_path, use_pqtls, snp_sep, protein_sep, clin_file):
+def load_files(snp_path, protein_path, use_pqtls, snp_sep, protein_sep, clin_file=None):
     print("Reading SNP file '%s'..." % snp_path)
     snps = pd.read_csv(snp_path, sep=snp_sep, index_col=0, keep_default_na=False)
     print("Finished reading SNP file.")
@@ -160,8 +160,8 @@ def get_top_k_accuracy(dist_mat, k=1, count_ties=False):
 
 
 # Evaluates the model at each multiple #s of pQTLs used.
-def get_outputs(prob_matrix, sids, clin_data,draw_probs = False):
-    ideal_list = [20, 40, 60, 100, 144, 223]
+def get_outputs(prob_matrix, sids, clin_data=None,draw_probs = False):
+    ideal_list = [20, 40, 60, 100, 150, 250]
     # Assemble list of #s of proteins to test
     test_prot_max = prob_matrix.shape[-1]
 
@@ -171,7 +171,7 @@ def get_outputs(prob_matrix, sids, clin_data,draw_probs = False):
     rows = []
     for test_v in actual_list:
         temp_prob_matrix = prob_matrix[:, :, :test_v].sum(axis=-1)
-        tmp_top_k = get_top_k_accuracy(-temp_prob_matrix, k=np.minimum(temp_prob_matrix.shape[0], 100))
+        tmp_top_k = get_top_k_accuracy(-temp_prob_matrix, k=temp_prob_matrix.shape[0])
         tmp_top_k_pct = tmp_top_k.sum(axis=0) / tmp_top_k.shape[0]
 
         top_1 = tmp_top_k_pct[0]
@@ -179,37 +179,50 @@ def get_outputs(prob_matrix, sids, clin_data,draw_probs = False):
         top_1pct = tmp_top_k_pct[one_pct - 1]
 
         rows.append({"K": test_v,
+                     "Ancestry":"Overall",
                      "Top 1 Acc.": top_1,
                      "Top 3 Acc.": top_3,
                      "Top 1% ({}) Acc.".format(one_pct): top_1pct})
 
-    if 100 in actual_list:
+        if clin_data is not None:
+            # Top K for each unique ancestry
+            for anc in np.unique(clin_data.race):
+                use_data = clin_data.race == anc
+                anc_top_k = tmp_top_k[use_data]
+                anc_top_k_pct = anc_top_k.sum(axis=0) / anc_top_k.shape[0]
+                rows.append({"K":test_v,
+                             "Ancestry":anc,
+                             "Top 1 Acc.":anc_top_k_pct[0],
+                             "Top 3 Acc.":anc_top_k_pct[2],
+                             "Top 1% ({}) Acc.".format(one_pct): anc_top_k_pct[one_pct-1]})
+
         fig, ax = plt.subplots(figsize=(9, 7))
 
-        prob_matrix = prob_matrix[:, :, :100].sum(axis=-1)
-        top_k = get_top_k_accuracy(-prob_matrix, k=100)
-        top_k_pct = top_k.sum(axis=0) / top_k.shape[0]
+        #prob_matrix = prob_matrix[:, :, :100].sum(axis=-1)
+        #top_k = get_top_k_accuracy(-prob_matrix, k=100)
+        #top_k_pct = top_k.sum(axis=0) / top_k.shape[0]
 
-        x_idcs = np.arange(1,51,2)
-        y_data = top_k_pct[x_idcs - 1]
+        x_idcs = np.arange(1,36,2)
+        y_data = tmp_top_k_pct[x_idcs - 1]
 
         ax.plot(x_idcs,y_data,"o-",label="All Subjects (n=%d of %d genotyped)" % (prob_matrix.shape[0],prob_matrix.shape[1]))
         ax.set_ylim([-0.05,1.05])
-        ax.set_xlim([0,51])
+        ax.set_xlim([0,36])
         ax.yaxis.set_minor_locator(AutoMinorLocator())
         ax.yaxis.set_major_locator(MultipleLocator(0.1))
 
-        ticks_arr = np.arange(1,50,4)
+        ticks_arr = np.concatenate([np.arange(1,35,4),[35]])
         ax.set_xticks(ticks_arr)
         ax.xaxis.set_minor_locator(AutoMinorLocator())
-        # Top K for each unique ancestry
-        for anc in np.unique(clin_data.race):
-            use_data = clin_data.race == anc
-            anc_top_k = top_k[use_data]
-            anc_top_k_pct = anc_top_k.sum(axis=0) / anc_top_k.shape[0]
+        if clin_data is not None:
+            # Top K for each unique ancestry
+            for anc in np.unique(clin_data.race):
+                use_data = clin_data.race == anc
+                anc_top_k = tmp_top_k[use_data]
+                anc_top_k_pct = anc_top_k.sum(axis=0) / anc_top_k.shape[0]
 
-            anc_y_data = anc_top_k_pct[x_idcs - 1]
-            ax.plot(x_idcs,anc_y_data,"o-",label="%s (n=%d)" % (anc,anc_top_k.shape[0]))
+                anc_y_data = anc_top_k_pct[x_idcs - 1]
+                ax.plot(x_idcs,anc_y_data,"o-",label="%s (n=%d)" % (anc,anc_top_k.shape[0]))
 
         # Random Guess Line
         ax.plot(x_idcs,x_idcs/prob_matrix.shape[1],"o-",color="gray",label="Random Guess")
@@ -227,7 +240,7 @@ def get_outputs(prob_matrix, sids, clin_data,draw_probs = False):
         pct_ax.xaxis.set_label_position("bottom")
         pct_ax.set_xlabel("% of Genotype Pool Size (n={})".format(prob_matrix.shape[1]))
         plt.tight_layout()
-        plt.savefig(args.output_file + "_acc.png")
+        plt.savefig(args.output_file + "_acc_{:d}.png".format(test_v))
         plt.close()
 
         if draw_probs:
@@ -481,7 +494,12 @@ if __name__ == "__main__":
         model_all = pickle.load(model_file)
     jhs_mapping = pd.read_csv("jhs_mapping_file.csv")
     jhs_mapping_dict = {k: v for k, v in zip(jhs_mapping.jhs_name, jhs_mapping.Target)}
-    model_all["sort_pqtls"]["gene"] = model_all["sort_pqtls"]["gene"].apply(lambda x: jhs_mapping_dict[x])
+    def map_maybe(prot):
+        if prot in jhs_mapping_dict:
+            return jhs_mapping_dict[prot]
+        else:
+            return prot
+    model_all["sort_pqtls"]["gene"] = model_all["sort_pqtls"]["gene"].apply(map_maybe)
     print("Model loaded successfully.")
     model = model_all["model"]
     class_order = model_all["class_order"]
@@ -594,42 +612,59 @@ if __name__ == "__main__":
             pickle.dump(model_all, model_out)
 
         print("\nStep 3: Predict with Trained Model")
-        # Get predictions for genotype
-        prediction_matrix = predict_genotype(model=model,
-                                             prots=test_prots)
+        # Get predictions for genotype on test data
+        test_pred_matrix = predict_genotype(model=model,
+                                            prots=test_prots)
 
-        # Get probability matrix.
-        prob_matrix = eval_model(y_pred=prediction_matrix,
-                                 y_true=test_snps,
-                                 class_orders=class_order)
+        # Get predictions for genotype on train data
+        train_pred_matrix = predict_genotype(model=model,
+                                             prots=train_prots)
 
+        # Get probability matrix for test data.
+        test_prob_matrix = eval_model(y_pred=test_pred_matrix,
+                                      y_true=test_snps,
+                                      class_orders=class_order)
+
+        # Get probability matrix for train data.
+        train_prob_matrix = eval_model(y_pred=train_pred_matrix,
+                                       y_true=train_snps,
+                                       class_orders=class_order)
         # Compute final outputs
-        output_df = get_outputs(prob_matrix=prob_matrix,
-                                sids=np.array(test_prots.index),
-                                draw_probs=args.draw_probs)
+        test_output_df = get_outputs(prob_matrix=test_prob_matrix,
+                                     sids=np.array(test_prots.index),
+                                     clin_data=clin,
+                                     draw_probs=args.draw_probs)
+        test_output_df["split"] = "Test"
 
+        train_output_df = get_outputs(prob_matrix=train_prob_matrix,
+                                      sids=np.array(train_prots.index),
+                                      clin_data=clin,
+                                      draw_probs=args.draw_probs)
+        train_output_df["split"] = "Train"
+
+        comb_output_df = pd.concat([train_output_df,test_output_df])
         # Write outputs to file.
         out_filename = "train_" + args.output_file
-        output_df.to_csv(out_filename, index=False)
+        comb_output_df.to_csv(out_filename, index=False)
         print("Wrote results to '%s'." % out_filename)
     else:
         print("\nStep 2: Model Prediction")
         # Get predictions for genotype
-        prediction_matrix = predict_genotype(model=model,
-                                             prots=prots)
+        test_pred_matrix = predict_genotype(model=model,
+                                            prots=prots)
 
         # Get probability matrix.
-        prob_matrix = eval_model(y_pred=prediction_matrix,
-                                 y_true=snps,
-                                 class_orders=class_order)
+        test_prob_matrix = eval_model(y_pred=test_pred_matrix,
+                                      y_true=snps,
+                                      class_orders=class_order)
 
         # Compute final outputs
-        output_df = get_outputs(prob_matrix=prob_matrix,
-                                sids=np.array(prots.index),
-                                clin_data=clin,
-                                draw_probs=args.draw_probs)
+        test_output_df = get_outputs(prob_matrix=test_prob_matrix,
+                                     sids=np.array(prots.index),
+                                     clin_data=clin,
+                                     draw_probs=args.draw_probs)
 
         # Write outputs to file.
-        out_filename = args.output_file
-        output_df.to_csv(out_filename, index=False)
+        out_filename = args.output_file+".csv"
+        test_output_df.to_csv(out_filename, index=False)
         print("Wrote results to '%s'." % args.output_file)
