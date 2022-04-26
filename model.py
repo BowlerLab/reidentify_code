@@ -46,10 +46,12 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
     """
     snp_list = [p[0] for p in pqtls]
     prot_list = [p[1] for p in pqtls]
-    ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
-    ref_snps = ref_snps.loc[snp_list].values[:, 0]
-    if len(ref_snps[0]) == 1:
-        ref_snps = ref_snps*2
+    # Compute the reference genotype directly from the training data instead of a file.
+    ref_snps = train_labels.mode(axis="index")[snp_list].iloc[0].values
+    # ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
+    # ref_snps = ref_snps.loc[snp_list].values[:, 0]
+    # if len(ref_snps[0]) == 1:
+    #     ref_snps = ref_snps*2
     xtrain_tmp = train_data.loc[:, prot_list].values
     xtest_tmp = test_data.loc[:, prot_list].values
 
@@ -63,10 +65,10 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
         xtrain_tmp = np.log(1 + xtrain_tmp)
         xtest_tmp = np.log(1 + xtest_tmp)
 
-    unadj_tmp_df_1 = pd.DataFrame(xtrain_tmp,index=train_data.index,columns=prot_list)
-    unadj_tmp_df_2 = pd.DataFrame(xtest_tmp,index=test_data.index,columns=prot_list)
-    unadj_tmp_df_all = pd.concat([unadj_tmp_df_1,unadj_tmp_df_2]).sort_index()
-    unadj_tmp_df_all.to_csv("COPDGene_P2_5K_Unadjusted.csv")
+    # unadj_tmp_df_1 = pd.DataFrame(xtrain_tmp,index=train_data.index,columns=prot_list)
+    # unadj_tmp_df_2 = pd.DataFrame(xtest_tmp,index=test_data.index,columns=prot_list)
+    # unadj_tmp_df_all = pd.concat([unadj_tmp_df_1,unadj_tmp_df_2]).sort_index()
+    # unadj_tmp_df_all.to_csv("COPDGene_P2_5K_Unadjusted.csv")
 
     if dump_charts:
         for j, (snp, prot) in enumerate(pqtls):
@@ -155,10 +157,10 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
     # tmp_test_out.to_csv(prefix+"derm_sicam5_test.csv")
     # tmp_test_snps_out.to_csv(prefix+"derm_sicam5_test_snps.csv")
 
-    tmp_df_1 = pd.DataFrame(xtrain_tmp,index=train_data.index,columns=prot_list)
-    tmp_df_2 = pd.DataFrame(xtest_tmp,index=test_data.index,columns=prot_list)
-    tmp_df_all = pd.concat([tmp_df_1,tmp_df_2]).sort_index()
-    tmp_df_all.to_csv("COPDGene_P2_5K_GenotypeAdjusted.csv")
+    # tmp_df_1 = pd.DataFrame(xtrain_tmp,index=train_data.index,columns=prot_list)
+    # tmp_df_2 = pd.DataFrame(xtest_tmp,index=test_data.index,columns=prot_list)
+    # tmp_df_all = pd.concat([tmp_df_1,tmp_df_2]).sort_index()
+    # tmp_df_all.to_csv("COPDGene_P2_5K_GenotypeAdjusted.csv")
 
     return np.transpose(xtrain_tmp), np.transpose(ytrain_tmp), train_sids, np.transpose(xtest_tmp), np.transpose(
         ytest_tmp), test_sids, all_classes
