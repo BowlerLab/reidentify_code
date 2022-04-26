@@ -163,7 +163,7 @@ def make_train_test(pqtls, train_data, train_labels, test_data, test_labels, log
     # tmp_df_all.to_csv("COPDGene_P2_5K_GenotypeAdjusted.csv")
 
     return np.transpose(xtrain_tmp), np.transpose(ytrain_tmp), train_sids, np.transpose(xtest_tmp), np.transpose(
-        ytest_tmp), test_sids, all_classes
+        ytest_tmp), test_sids, all_classes, ref_snps
 
 
 def train_model(train_proteins, train_snps, all_classes, skip_train=False):

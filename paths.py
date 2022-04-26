@@ -185,8 +185,8 @@ ALL_DATASET_NAMES = [COPDGene_P1_NAME,
 # REFERENCE_SNPS = "output/5k_all/reference_snps_p2_5k_1727.csv"
 
 # 5K w/ Train-Test Split
-PAIR_LIST = "output/2_4_2022/use_pqtls_1721_5k.csv"
-REFERENCE_SNPS = "output/2_4_2022/reference_snps_1721_5k.csv"
+#PAIR_LIST = "output/2_4_2022/use_pqtls_1721_5k.csv"
+#REFERENCE_SNPS = "output/2_4_2022/reference_snps_1721_5k.csv"
 
 # 5K w/ Train-Test Split QC
 #PAIR_LIST = "output/5k_qc/use_pqtls_5k_qc_aligned_2646.csv"

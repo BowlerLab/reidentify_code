@@ -199,7 +199,7 @@ def load_data(args):
 
     # If training and testing data are the same, we don't need to read the files again.
     if train_data_arg == test_data_arg:
-        test_p, test_snp, test_clin, test_o_snp = (train_p, train_snp, train_clin, train_o_snp)
+        test_p, test_snp, test_clin, test_o_snp = (train_p.copy(), train_snp.copy(), train_clin.copy(), train_o_snp.copy())
     else:
         test_p, test_snp, test_clin, test_o_snp = load_dataset(test_data_arg)
     print("Loaded %s as testing set." % test_data_arg)

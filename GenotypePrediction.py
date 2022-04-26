@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from dataloader import load_data
 from metrics import train_test_accuracy
-from paths import PAIR_LIST, REFERENCE_SNPS
+# from paths import PAIR_LIST, REFERENCE_SNPS
 from model import make_train_test, train_model, predict_model, eval_model
 
 DATASET_CHOCIES = ["COPDGene_P1",
@@ -27,6 +27,7 @@ DATASET_CHOCIES = ["COPDGene_P1",
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--pqtl_file", type=str, required=True)
     parser.add_argument("--train_data", type=str, choices=DATASET_CHOCIES, required=True)
     parser.add_argument("--test_data", type=str, choices=DATASET_CHOCIES, required=True)
     parser.add_argument("--use_pqtls", nargs="+", type=int,
@@ -49,7 +50,7 @@ if __name__ == "__main__":
         args)
 
     # Step 2: Read pQTL list.
-    pqtls = pd.read_csv(PAIR_LIST)
+    pqtls = pd.read_csv(args.pqtl_file)
     # Step 2.5: Sort pQTL list by p-value.
     # Sort by this value.
     sort_pqtls = pqtls.sort_values("p-value", ascending=True)
@@ -59,19 +60,19 @@ if __name__ == "__main__":
     pqtl_pairs = [(x, y) for x, y in zip(sort_pqtls.SNP, sort_pqtls.gene)]
 
     # Step 3: Convert raw data into training and test datasets with x as protein measurements and y as genotype.
-    x_train, y_train, train_sids, x_test, y_test, test_sids, all_classes = make_train_test(pqtl_pairs, train_proteins,
-                                                                                           train_snps, test_proteins,
-                                                                                           test_snps,
-                                                                                           align_to_reference=args.mean_adjust,
-                                                                                           train_other_snps=train_other_snps,
-                                                                                           test_other_snps=test_other_snps,
-                                                                                           # dump_charts=True
-                                                                                           )
+    x_train, y_train, train_sids, x_test, y_test, test_sids, all_classes, ref_snps = make_train_test(pqtl_pairs,
+                                                                                                     train_proteins,
+                                                                                                     train_snps,
+                                                                                                     test_proteins,
+                                                                                                     test_snps,
+                                                                                                     align_to_reference=args.mean_adjust,
+                                                                                                     train_other_snps=train_other_snps,
+                                                                                                     test_other_snps=test_other_snps,
+                                                                                                     # dump_charts=True
+                                                                                                     )
     # Step 4: Train model using training dataset.
     trained_model, class_order, class_prior = train_model(x_train, y_train, all_classes, skip_train=args.skip_train)
     # Step 4.5: Dump out trained model in pickle (binary) format so that we can predict without using the training data.
-    ref_snps = pd.read_csv(REFERENCE_SNPS, index_col=0)
-
     dump_obj = {"model": trained_model,
                 "class_order": class_order,
                 "class_prior": class_prior,
