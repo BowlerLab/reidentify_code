@@ -27,8 +27,8 @@ DATASET_CHOCIES = ["COPDGene_P1",
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train_data", type=str, choices=DATASET_CHOCIES)
-    parser.add_argument("--test_data", type=str, choices=DATASET_CHOCIES)
+    parser.add_argument("--train_data", type=str, choices=DATASET_CHOCIES, required=True)
+    parser.add_argument("--test_data", type=str, choices=DATASET_CHOCIES, required=True)
     parser.add_argument("--use_pqtls", nargs="+", type=int,
                         help="Use only the top N pQTLs (sorted by FDR). Pass a single value or a set of values to test.",
                         default=[100])
